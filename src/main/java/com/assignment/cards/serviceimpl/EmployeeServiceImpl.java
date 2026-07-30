@@ -14,99 +14,123 @@ import com.assignment.cards.exception.ResourceNotFoundException;
 import com.assignment.cards.repository.EmployeeRepository;
 import com.assignment.cards.service.EmployeeService;
 
+import java.util.Arrays;
+import java.util.List;
+
+import org.springframework.web.client.RestTemplate;
+
+import com.assignment.cards.dto.EmployeePostsResponse;
+import com.assignment.cards.external.JsonPlaceholderPost;
+
 @Service
 @Transactional
 public class EmployeeServiceImpl implements EmployeeService {
 
-    private final EmployeeRepository employeeRepository;
+	private final EmployeeRepository employeeRepository;
 
-    public EmployeeServiceImpl(EmployeeRepository employeeRepository) {
-        this.employeeRepository = employeeRepository;
-    }
+	private final RestTemplate restTemplate;
 
-    @Override
-    public EmployeeResponse createEmployee(EmployeeRequest request) {
+	public EmployeeServiceImpl(EmployeeRepository employeeRepository, RestTemplate restTemplate) {
 
-        Employee employee = new Employee();
+		this.employeeRepository = employeeRepository;
+		this.restTemplate = restTemplate;
+	}
 
-        employee.setFirstName(request.getFirstName());
-        employee.setLastName(request.getLastName());
-        employee.setEmail(request.getEmail());
-        employee.setDepartment(request.getDepartment());
-        employee.setSalary(request.getSalary());
+	@Override
+	@Transactional(readOnly = true)
+	public EmployeePostsResponse getEmployeePosts(Long id) {
 
-        Employee savedEmployee = employeeRepository.save(employee);
+		Employee employee = employeeRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Employee not found with id : " + id));
 
-        return convertToResponse(savedEmployee);
-    }
+		EmployeeResponse employeeResponse = convertToResponse(employee);
 
-    @Override
-    public EmployeeResponse getEmployeeById(Long id) {
+		String url = "https://jsonplaceholder.typicode.com/posts?userId=" + id;
 
-        Employee employee = employeeRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Employee not found with id : " + id));
+		JsonPlaceholderPost[] response = restTemplate.getForObject(url, JsonPlaceholderPost[].class);
 
-        return convertToResponse(employee);
-    }
+		List<JsonPlaceholderPost> posts = Arrays.asList(response);
 
-    @Override
-    public Page<EmployeeResponse> getAllEmployees(
-            int page,
-            int size,
-            String sortBy,
-            String direction) {
+		EmployeePostsResponse result = new EmployeePostsResponse();
+		result.setEmployee(employeeResponse);
+		result.setPosts(posts);
 
-        Sort sort = direction.equalsIgnoreCase("desc")
-                ? Sort.by(sortBy).descending()
-                : Sort.by(sortBy).ascending();
+		return result;
+	}
 
-        Pageable pageable = PageRequest.of(page, size, sort);
+	@Override
+	public EmployeeResponse createEmployee(EmployeeRequest request) {
 
-        return employeeRepository.findAll(pageable)
-                .map(this::convertToResponse);
-    }
+		Employee employee = new Employee();
 
-    @Override
-    public EmployeeResponse updateEmployee(Long id, EmployeeRequest request) {
+		employee.setFirstName(request.getFirstName());
+		employee.setLastName(request.getLastName());
+		employee.setEmail(request.getEmail());
+		employee.setDepartment(request.getDepartment());
+		employee.setSalary(request.getSalary());
 
-        Employee employee = employeeRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Employee not found with id : " + id));
+		Employee savedEmployee = employeeRepository.save(employee);
 
-        employee.setFirstName(request.getFirstName());
-        employee.setLastName(request.getLastName());
-        employee.setEmail(request.getEmail());
-        employee.setDepartment(request.getDepartment());
-        employee.setSalary(request.getSalary());
+		return convertToResponse(savedEmployee);
+	}
 
-        Employee updatedEmployee = employeeRepository.save(employee);
+	@Override
+	public EmployeeResponse getEmployeeById(Long id) {
 
-        return convertToResponse(updatedEmployee);
-    }
+		Employee employee = employeeRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Employee not found with id : " + id));
 
-    @Override
-    public void deleteEmployee(Long id) {
+		return convertToResponse(employee);
+	}
 
-        Employee employee = employeeRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Employee not found with id : " + id));
+	@Override
+	public Page<EmployeeResponse> getAllEmployees(int page, int size, String sortBy, String direction) {
 
-        employeeRepository.delete(employee);
-    }
+		Sort sort = direction.equalsIgnoreCase("desc") ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
 
-    private EmployeeResponse convertToResponse(Employee employee) {
+		Pageable pageable = PageRequest.of(page, size, sort);
 
-        EmployeeResponse response = new EmployeeResponse();
+		return employeeRepository.findAll(pageable).map(this::convertToResponse);
+	}
 
-        response.setId(employee.getId());
-        response.setFirstName(employee.getFirstName());
-        response.setLastName(employee.getLastName());
-        response.setEmail(employee.getEmail());
-        response.setDepartment(employee.getDepartment());
-        response.setSalary(employee.getSalary());
+	@Override
+	public EmployeeResponse updateEmployee(Long id, EmployeeRequest request) {
 
-        return response;
-    }
+		Employee employee = employeeRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Employee not found with id : " + id));
+
+		employee.setFirstName(request.getFirstName());
+		employee.setLastName(request.getLastName());
+		employee.setEmail(request.getEmail());
+		employee.setDepartment(request.getDepartment());
+		employee.setSalary(request.getSalary());
+
+		Employee updatedEmployee = employeeRepository.save(employee);
+
+		return convertToResponse(updatedEmployee);
+	}
+
+	@Override
+	public void deleteEmployee(Long id) {
+
+		Employee employee = employeeRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Employee not found with id : " + id));
+
+		employeeRepository.delete(employee);
+	}
+
+	private EmployeeResponse convertToResponse(Employee employee) {
+
+		EmployeeResponse response = new EmployeeResponse();
+
+		response.setId(employee.getId());
+		response.setFirstName(employee.getFirstName());
+		response.setLastName(employee.getLastName());
+		response.setEmail(employee.getEmail());
+		response.setDepartment(employee.getDepartment());
+		response.setSalary(employee.getSalary());
+
+		return response;
+	}
 
 }

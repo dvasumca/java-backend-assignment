@@ -4,12 +4,17 @@ import org.springframework.data.domain.Page;
 
 import com.assignment.cards.dto.EmployeeRequest;
 import com.assignment.cards.dto.EmployeeResponse;
+import com.assignment.cards.dto.EmployeePostsResponse;
 
 public interface EmployeeService {
+	
+	
 
     EmployeeResponse createEmployee(EmployeeRequest request);
 
     EmployeeResponse getEmployeeById(Long id);
+    
+    EmployeePostsResponse getEmployeePosts(Long id);
 
     Page<EmployeeResponse> getAllEmployees(
             int page,
